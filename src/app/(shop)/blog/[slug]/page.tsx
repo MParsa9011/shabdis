@@ -29,7 +29,7 @@ export default async function BlogPostPage({ params }: Props) {
     image: post.coverImage,
     datePublished: post.createdAt.toISOString(),
     dateModified: post.updatedAt.toISOString(),
-    publisher: { "@type": "Organization", name: "تبرجین" },
+    publisher: { "@type": "Organization", name: "شبدیس" },
   };
 
   return (

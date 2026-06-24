@@ -15,7 +15,7 @@ export async function requestPayment(
       amount: amount * 10,
       orderId,
       callbackUrl,
-      description: description ?? "پرداخت سفارش تبرجین",
+      description: description ?? "پرداخت سفارش شبدیس",
     }),
   });
   const data = await res.json();

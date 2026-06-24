@@ -6,7 +6,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "محصولات",
-  description: "همه زیورآلات سنگ و نقره تبرجین. انگشتر، دستبند، گردنبند، گوشواره.",
+  description: "همه زیورآلات سنگ و نقره شبدیس. انگشتر، دستبند، گردنبند، گوشواره.",
 };
 
 type SearchParams = Promise<{

@@ -40,7 +40,7 @@ function SignInForm() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link href="/">
-            <Image src="/logo.png" alt="تبرجین" width={140} height={50} className="h-12 w-auto mx-auto" />
+            <Image src="/logo.png" alt="شبدیس" width={140} height={50} className="h-12 w-auto mx-auto" />
           </Link>
           <h1 className="text-xl font-bold text-navy mt-4">ورود به حساب کاربری</h1>
         </div>

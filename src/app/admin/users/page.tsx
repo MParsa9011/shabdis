@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/adminAuth";
 import { redirect } from "next/navigation";
 import Badge from "@/components/ui/Badge";
 
-export const metadata = { title: "کاربران | ادمین تبرجین" };
+export const metadata = { title: "کاربران | ادمین شبدیس" };
 
 export default async function AdminUsersPage() {
   const { error } = await requireAdmin();

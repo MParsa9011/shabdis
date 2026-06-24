@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "درباره تبرجین | فروشگاه زیورآلات سنگ و نقره",
+  title: "درباره شبدیس | فروشگاه زیورآلات سنگ و نقره",
   description:
-    "تبرجین؛ مرجع خرید آنلاین زیورآلات دست‌ساز سنگ و نقره اصیل ایرانی. محصولات ما با دقت و عشق به هنر ساخته می‌شوند.",
+    "شبدیس؛ مرجع خرید آنلاین زیورآلات دست‌ساز سنگ و نقره اصیل ایرانی. محصولات ما با دقت و عشق به هنر ساخته می‌شوند.",
   openGraph: {
-    title: "درباره تبرجین",
-    description: "داستان ما و فلسفه تبرجین",
+    title: "درباره شبدیس",
+    description: "داستان ما و فلسفه شبدیس",
     locale: "fa_IR",
   },
 };
@@ -15,7 +15,7 @@ export default function AboutPage() {
   return (
     <main className="max-w-4xl mx-auto px-4 py-16">
       <div className="text-center mb-16">
-        <h1 className="text-4xl font-bold text-navy mb-4">درباره تبرجین</h1>
+        <h1 className="text-4xl font-bold text-navy mb-4">درباره شبدیس</h1>
         <p className="text-xl text-gray-600">هنر زیورآلات سنگ و نقره</p>
         <div className="w-20 h-1 bg-gold mx-auto mt-6 rounded-full" />
       </div>
@@ -24,7 +24,7 @@ export default function AboutPage() {
         <div className="bg-cream rounded-2xl p-8">
           <h2 className="text-2xl font-bold text-navy mb-4">داستان ما</h2>
           <p className="text-gray-700 leading-8">
-            تبرجین با عشق به هنر اصیل ایرانی و زیورآلات دست‌ساز پایه‌گذاری شده است. نام تبرجین از واژه فارسی
+            شبدیس با عشق به هنر اصیل ایرانی و زیورآلات دست‌ساز پایه‌گذاری شده است. نام شبدیس از واژه فارسی
             «تبر» گرفته شده که نشانه‌ای از قدرت و اصالت در هنر ایرانی است. ما بر این باوریم که هر زیور
             باید داستانی داشته باشد — داستانی از سنگ‌های طبیعی، نقره ناب و دستانی که با مهارت آن را شکل
             می‌دهند.

@@ -8,9 +8,9 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="md:col-span-2">
-            <Image src="/logo.png" alt="تبرجین" width={120} height={40} className="h-10 w-auto brightness-200 mb-4" />
+            <Image src="/logo.png" alt="شبدیس" width={120} height={40} className="h-10 w-auto brightness-200 mb-4" />
             <p className="text-gray-300 text-sm leading-7 max-w-xs">
-              تبرجین، فروشگاه آنلاین زیورآلات سنگ و نقره اصیل ایرانی.
+              شبدیس، فروشگاه آنلاین زیورآلات سنگ و نقره اصیل ایرانی.
               هر محصول با دقت انتخاب شده تا زیبایی طبیعت را به زندگی شما بیاورد.
             </p>
             <div className="flex gap-3 mt-4">
@@ -67,7 +67,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-white/10 mt-8 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-400">
-          <p>© {new Date().getFullYear()} تبرجین - تمام حقوق محفوظ است</p>
+          <p>© {new Date().getFullYear()} شبدیس - تمام حقوق محفوظ است</p>
           <div className="flex gap-4">
             <Link href="/privacy" className="hover:text-gold transition-colors">حریم خصوصی</Link>
             <Link href="/terms" className="hover:text-gold transition-colors">شرایط استفاده</Link>

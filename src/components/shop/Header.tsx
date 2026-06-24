@@ -29,7 +29,7 @@ export default function Header({ user }: Props) {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
-            <Image src="/logo.png" alt="تبرجین" width={120} height={40} className="h-10 w-auto" />
+            <Image src="/logo.png" alt="شبدیس" width={120} height={40} className="h-10 w-auto" />
           </Link>
 
           {/* Desktop Nav */}

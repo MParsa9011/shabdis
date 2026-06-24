@@ -18,7 +18,7 @@ export default async function BlogPage() {
   return (
     <div className="container mx-auto px-4 max-w-5xl py-12">
       <div className="text-center mb-12">
-        <h1 className="text-3xl font-bold text-navy mb-3">مجله تبرجین</h1>
+        <h1 className="text-3xl font-bold text-navy mb-3">مجله شبدیس</h1>
         <p className="text-gray-500">راهنما، داستان‌ها و نکاتی درباره زیورآلات</p>
       </div>
 

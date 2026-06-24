@@ -10,8 +10,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const category = await prisma.category.findUnique({ where: { slug } });
   if (!category) return {};
   return {
-    title: `${category.name} | تبرجین`,
-    description: `خرید انواع ${category.name} از فروشگاه تبرجین`,
+    title: `${category.name} | شبدیس`,
+    description: `خرید انواع ${category.name} از فروشگاه شبدیس`,
   };
 }
 

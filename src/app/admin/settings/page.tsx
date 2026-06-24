@@ -16,7 +16,7 @@ type Settings = {
 };
 
 const DEFAULTS: Settings = {
-  siteName: "تبرجین",
+  siteName: "شبدیس",
   siteDescription: "فروشگاه زیورآلات سنگ و نقره",
   sitePhone: "",
   siteEmail: "",

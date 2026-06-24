@@ -56,9 +56,9 @@ async function main() {
 
   // Default settings
   const settings = [
-    { key: "siteName", value: "تبرجین" },
+    { key: "siteName", value: "شبدیس" },
     { key: "siteDescription", value: "فروشگاه زیورآلات سنگ و نقره" },
-    { key: "footerText", value: "تمام حقوق برای فروشگاه تبرجین محفوظ است." },
+    { key: "footerText", value: "تمام حقوق برای فروشگاه شبدیس محفوظ است." },
   ];
   for (const s of settings) {
     await prisma.setting.upsert({ where: { key: s.key }, update: {}, create: s });
