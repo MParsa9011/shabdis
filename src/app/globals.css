@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme inline {
+  --color-navy: #1a2b5e;
+  --color-navy-light: #243a7a;
+  --color-navy-dark: #111d3f;
+  --color-gold: #c4a44a;
+  --color-gold-light: #d4b660;
+  --color-gold-dark: #9e7f2e;
+  --color-gold-pale: #f5e8c0;
+  --color-cream: #faf9f6;
+  --font-sans: "Vazirmatn", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  direction: rtl;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Vazirmatn", system-ui, sans-serif;
+  background-color: #ffffff;
+  color: #1a1a1a;
+  -webkit-font-smoothing: antialiased;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #c4a44a; border-radius: 3px; }
+
+:focus-visible {
+  outline: 2px solid #c4a44a;
+  outline-offset: 2px;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.prose {
+  max-width: 65ch;
+  line-height: 1.75;
+}
+.prose h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; color: #1a2b5e; }
+.prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #1a2b5e; }
+.prose p { margin-bottom: 1rem; }
+.prose ul { list-style: disc; padding-right: 1.5rem; margin-bottom: 1rem; }
+.prose ol { list-style: decimal; padding-right: 1.5rem; margin-bottom: 1rem; }
+.prose li { margin-bottom: 0.25rem; }
+.prose a { color: #c4a44a; text-decoration: underline; }
+.prose img { border-radius: 0.5rem; margin: 1.5rem 0; }
+.prose blockquote { border-right: 4px solid #c4a44a; padding-right: 1rem; color: #6b7280; font-style: italic; margin: 1.5rem 0; }

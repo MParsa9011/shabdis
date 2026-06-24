@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: tabarjin_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://tabarjin:${POSTGRES_PASSWORD}@db:5432/tabarjin?schema=public
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      ZIBAL_MERCHANT: ${ZIBAL_MERCHANT}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+      NEXT_PUBLIC_SITE_NAME: تبرجین
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/public/uploads
+
+  db:
+    image: postgres:16-alpine
+    container_name: tabarjin_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tabarjin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: tabarjin
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tabarjin -d tabarjin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  uploads:
