@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from "@/store/cart";
+import { useProductView } from "@/components/shop/ProductViewContext";
 import Button from "@/components/ui/Button";
 import type { CartItem } from "@/types";
 
@@ -10,6 +11,7 @@ type Variant = {
   attributes: Record<string, string>;
   price?: number | null;
   stock: number;
+  image?: string | null;
 };
 
 type Props = {
@@ -27,6 +29,7 @@ type Props = {
 
 export default function AddToCart({ product }: Props) {
   const { addItem } = useCart();
+  const { setActiveImage } = useProductView();
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
@@ -40,6 +43,11 @@ export default function AddToCart({ product }: Props) {
         )
       )
     : null;
+
+  // When the selected variant has its own image, switch the gallery to it.
+  useEffect(() => {
+    if (selectedVariant?.image) setActiveImage(selectedVariant.image);
+  }, [selectedVariant, setActiveImage]);
 
   const price = selectedVariant?.price ?? product.price;
   const stock = hasVariants ? (selectedVariant?.stock ?? 0) : 999;
@@ -55,7 +63,7 @@ export default function AddToCart({ product }: Props) {
       name: product.name,
       slug: product.slug,
       price,
-      image: product.images[0]?.url ?? null,
+      image: selectedVariant?.image ?? product.images[0]?.url ?? null,
       quantity,
       stock,
       variantLabel: selectedVariant
@@ -87,6 +95,18 @@ export default function AddToCart({ product }: Props) {
     });
   };
 
+  // Total stock for a given attribute value, considering the other selected attributes.
+  const stockWith = (attrName: string, value: string) => {
+    return product.variants
+      .filter((v) => {
+        const attrs = v.attributes as Record<string, string>;
+        if (attrs[attrName] !== value) return false;
+        const otherSelected = Object.entries(selectedAttributes).filter(([k]) => k !== attrName);
+        return otherSelected.every(([k, val]) => attrs[k] === val);
+      })
+      .reduce((s, v) => s + v.stock, 0);
+  };
+
   return (
     <div className="space-y-4">
       {/* Variant selectors */}
@@ -101,6 +121,7 @@ export default function AddToCart({ product }: Props) {
           <div className="flex flex-wrap gap-2">
             {getAttributeValues(attrName).map((val) => {
               const available = isAvailableWith(attrName, val);
+              const outOfStock = available && stockWith(attrName, val) <= 0;
               const selected = selectedAttributes[attrName] === val;
               return (
                 <button
@@ -112,10 +133,13 @@ export default function AddToCart({ product }: Props) {
                     "px-3 py-1.5 rounded-lg border text-sm transition-all",
                     selected
                       ? "border-navy bg-navy text-white"
+                      : outOfStock
+                      ? "border-gray-100 text-gray-400 line-through hover:border-gray-300"
                       : available
                       ? "border-gray-200 text-gray-700 hover:border-navy hover:text-navy"
                       : "border-gray-100 text-gray-300 cursor-not-allowed line-through",
                   ].join(" ")}
+                  title={outOfStock ? "ناموجود" : undefined}
                 >
                   {val}
                 </button>
@@ -152,12 +176,23 @@ export default function AddToCart({ product }: Props) {
           size="lg"
           className="flex-1"
         >
-          {added ? "✓ اضافه شد" : !product.inStock ? "ناموجود" : !allSelected ? "لطفاً ویژگی‌ها را انتخاب کنید" : "افزودن به سبد خرید"}
+          {added
+            ? "✓ اضافه شد"
+            : !product.inStock
+            ? "ناموجود"
+            : !allSelected
+            ? "لطفاً ویژگی‌ها را انتخاب کنید"
+            : stock <= 0
+            ? "ناموجود"
+            : "افزودن به سبد خرید"}
         </Button>
       </div>
 
+      {allSelected && product.inStock && stock <= 0 && (
+        <p className="text-sm font-medium text-red-500">این ویژگی در حال حاضر ناموجود است</p>
+      )}
       {selectedVariant && selectedVariant.stock < 10 && selectedVariant.stock > 0 && (
-        <p className="text-xs text-amber-600">تنها {selectedVariant.stock} عدد در انبار باقی مانده</p>
+        <p className="text-xs text-amber-600">تنها {selectedVariant.stock.toLocaleString("fa-IR")} عدد در انبار باقی مانده</p>
       )}
     </div>
   );

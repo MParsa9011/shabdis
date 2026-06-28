@@ -10,14 +10,15 @@ datasource db {
 model User {
   id        String    @id @default(cuid())
   name      String
-  email     String    @unique
-  phone     String?
+  email     String?   @unique
+  phone     String?   @unique
   password  String
   role      Role      @default(CUSTOMER)
   orders    Order[]
   reviews   Review[]
   addresses Address[]
   cart      Cart?
+  coupons   Coupon[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -30,7 +31,7 @@ model Category {
   parent   Category?  @relation("SubCategories", fields: [parentId], references: [id])
   parentId String?
   children Category[] @relation("SubCategories")
-  products Product[]
+  products Product[]  @relation("ProductCategories")
 }
 
 model Product {
@@ -38,11 +39,11 @@ model Product {
   name              String
   slug              String           @unique
   description       String           @db.Text
+  longDescription   String?          @db.Text
   price             Int
   comparePrice      Int?
   images            ProductImage[]
-  category          Category         @relation(fields: [categoryId], references: [id])
-  categoryId        String
+  categories        Category[]       @relation("ProductCategories")
   variants          ProductVariant[]
   variantAttributes Json             @default("[]")
   reviews           Review[]
@@ -72,6 +73,7 @@ model ProductVariant {
   price      Int?
   stock      Int     @default(0)
   sku        String?
+  image      String?
 }
 
 model Address {
@@ -108,6 +110,9 @@ model Order {
   shippingMethod   ShippingMethod @relation(fields: [shippingMethodId], references: [id])
   shippingMethodId String
   payment          Payment?
+  coupon           Coupon?        @relation(fields: [couponId], references: [id])
+  couponId         String?
+  discountAmount   Int            @default(0)
   trackingCode     String?
   notes            String?
   createdAt        DateTime       @default(now())
@@ -186,6 +191,82 @@ model Setting {
   id    String @id @default(cuid())
   key   String @unique
   value String @db.Text
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  subject   String?
+  message   String   @db.Text
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model Coupon {
+  id          String       @id @default(cuid())
+  code        String       @unique
+  description String?
+  type        CouponType   @default(PERCENT)
+  amount      Int          // PERCENT: 1-100 | FIXED: تومان
+  maxDiscount Int?         // سقف تخفیف برای حالت درصدی (اختیاری)
+  minOrder    Int?         // حداقل مبلغ سبد برای اعتبار (اختیاری)
+  scope       CouponScope  @default(ALL)
+  user        User?        @relation(fields: [userId], references: [id])
+  userId      String?      // برای scope=USER
+  usageLimit  Int?         // حداکثر دفعات استفاده (اختیاری)
+  usedCount   Int          @default(0)
+  active      Boolean      @default(true)
+  expiresAt   DateTime?
+  orders      Order[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+enum CouponType {
+  PERCENT
+  FIXED
+}
+
+enum CouponScope {
+  ALL
+  USER
+  FIRST_ORDER
+}
+
+model PageView {
+  id        String   @id @default(cuid())
+  path      String
+  visitorId String?
+  referrer  String?
+  source    String?
+  device    String?
+  browser   String?
+  os        String?
+  country   String?
+  city      String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([visitorId])
+  @@index([path])
+  @@index([device])
+  @@index([browser])
+  @@index([source])
+  @@index([country])
 }
 
 enum Role {

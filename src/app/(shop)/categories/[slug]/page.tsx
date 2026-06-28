@@ -1,12 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import ProductCard from "@/components/shop/ProductCard";
+import { safeDecode } from "@/lib/utils";
 import type { Metadata } from "next";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ page?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = safeDecode(rawSlug);
   const category = await prisma.category.findUnique({ where: { slug } });
   if (!category) return {};
   return {
@@ -16,7 +18,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CategoryPage({ params, searchParams }: Props) {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = safeDecode(rawSlug);
   const { page } = await searchParams;
   const currentPage = Math.max(1, parseInt(page || "1"));
   const pageSize = 12;
@@ -29,19 +32,21 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   const categoryIds = [category.id, ...category.children.map((c) => c.id)];
 
+  const where = { categories: { some: { id: { in: categoryIds } } } };
+
   const [products, total] = await Promise.all([
     prisma.product.findMany({
-      where: { categoryId: { in: categoryIds }, inStock: true },
+      where,
       include: {
         images: { take: 1 },
-        category: true,
+        categories: { select: { name: true } },
         reviews: { select: { rating: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ inStock: "desc" }, { createdAt: "desc" }],
       skip: (currentPage - 1) * pageSize,
       take: pageSize,
     }),
-    prisma.product.count({ where: { categoryId: { in: categoryIds }, inStock: true } }),
+    prisma.product.count({ where }),
   ]);
 
   const totalPages = Math.ceil(total / pageSize);
@@ -70,33 +75,14 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       {products.length === 0 ? (
         <div className="text-center py-20 text-gray-400">
           <p className="text-xl">محصولی در این دسته‌بندی وجود ندارد</p>
-          <a href="/products" className="mt-4 inline-block text-navy underline">مشاهده همه محصولات</a>
+          <a href="/product" className="mt-4 inline-block text-navy underline">مشاهده همه محصولات</a>
         </div>
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {products.map((product) => {
-              const avgRating =
-                product.reviews.length > 0
-                  ? product.reviews.reduce((s, r) => s + r.rating, 0) / product.reviews.length
-                  : 0;
-              return (
-                <ProductCard
-                  key={product.id}
-                  product={{
-                    id: product.id,
-                    name: product.name,
-                    slug: product.slug,
-                    price: product.price,
-                    comparePrice: product.comparePrice ?? undefined,
-                    image: product.images[0]?.url,
-                    category: product.category.name,
-                    rating: avgRating,
-                    reviewCount: product.reviews.length,
-                  }}
-                />
-              );
-            })}
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
           </div>
 
           {totalPages > 1 && (

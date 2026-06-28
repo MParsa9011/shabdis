@@ -51,7 +51,7 @@ export default function CartDrawer() {
               </svg>
               <p className="text-gray-400 text-sm">سبد خرید شما خالی است</p>
               <Button variant="outline" size="sm" className="mt-3" onClick={closeCart}>
-                <Link href="/products">مشاهده محصولات</Link>
+                <Link href="/product">مشاهده محصولات</Link>
               </Button>
             </div>
           ) : (
@@ -66,7 +66,7 @@ export default function CartDrawer() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <Link
-                    href={`/products/${item.slug}`}
+                    href={`/product/${item.slug}`}
                     onClick={closeCart}
                     className="text-sm font-medium text-gray-800 line-clamp-2 hover:text-navy"
                   >

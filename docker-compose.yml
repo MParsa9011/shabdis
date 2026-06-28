@@ -12,13 +12,29 @@ services:
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
       ZIBAL_MERCHANT: ${ZIBAL_MERCHANT}
+      MELIPAYAMAK_OTP_KEY: ${MELIPAYAMAK_OTP_KEY}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
-      NEXT_PUBLIC_SITE_NAME: تبرجین
+      NEXT_PUBLIC_SITE_NAME: شبدیس
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - uploads:/app/public/uploads
+
+  # سرویس یک‌بارمصرف برای ساخت/به‌روزرسانی جداول دیتابیس:
+  #   docker compose run --rm migrate
+  migrate:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: postgresql://tabarjin:${POSTGRES_PASSWORD}@db:5432/tabarjin?schema=public
+    command: sh -c "npm ci && npx prisma db push"
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["tools"]
 
   db:
     image: postgres:16-alpine

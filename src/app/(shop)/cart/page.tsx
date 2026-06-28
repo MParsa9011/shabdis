@@ -17,7 +17,7 @@ export default function CartPage() {
         </svg>
         <h1 className="text-xl font-semibold text-gray-700 mb-2">سبد خرید شما خالی است</h1>
         <p className="text-gray-400 text-sm mb-6">محصولات مورد علاقه خود را پیدا کنید</p>
-        <Link href="/products">
+        <Link href="/product">
           <Button>مشاهده محصولات</Button>
         </Link>
       </div>
@@ -32,7 +32,7 @@ export default function CartPage() {
         <div className="lg:col-span-2 space-y-3">
           {items.map((item) => (
             <div key={`${item.productId}-${item.variantId}`} className="bg-white border border-gray-100 rounded-2xl p-4 flex gap-4">
-              <Link href={`/products/${item.slug}`} className="relative w-20 h-20 rounded-xl overflow-hidden bg-cream shrink-0">
+              <Link href={`/product/${item.slug}`} className="relative w-20 h-20 rounded-xl overflow-hidden bg-cream shrink-0">
                 {item.image ? (
                   <Image src={item.image} alt={item.name} fill className="object-cover" />
                 ) : (
@@ -40,7 +40,7 @@ export default function CartPage() {
                 )}
               </Link>
               <div className="flex-1 min-w-0">
-                <Link href={`/products/${item.slug}`} className="text-sm font-semibold text-navy hover:text-gold transition-colors line-clamp-2">
+                <Link href={`/product/${item.slug}`} className="text-sm font-semibold text-navy hover:text-gold transition-colors line-clamp-2">
                   {item.name}
                 </Link>
                 {item.variantLabel && <p className="text-xs text-gray-500 mt-0.5">{item.variantLabel}</p>}
@@ -102,7 +102,7 @@ export default function CartPage() {
               ادامه و ثبت سفارش
             </Button>
           </Link>
-          <Link href="/products" className="block text-center text-sm text-gold mt-3 hover:text-gold-dark transition-colors">
+          <Link href="/product" className="block text-center text-sm text-gold mt-3 hover:text-gold-dark transition-colors">
             ادامه خرید
           </Link>
         </div>

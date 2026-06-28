@@ -84,7 +84,7 @@ export default async function ProfilePage() {
           {orders.length === 0 ? (
             <div className="bg-white border border-gray-100 rounded-2xl p-10 text-center text-gray-400">
               <p className="mb-3">هنوز سفارشی ثبت نکرده‌اید</p>
-              <Link href="/products" className="text-gold text-sm font-medium">شروع خرید</Link>
+              <Link href="/product" className="text-gold text-sm font-medium">شروع خرید</Link>
             </div>
           ) : (
             <div className="space-y-3">

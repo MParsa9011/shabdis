@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requestPayment, getPaymentUrl } from "@/lib/zibal";
+import { validateCoupon } from "@/lib/coupon";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -9,14 +10,29 @@ export async function POST(req: NextRequest) {
 
   const userId = (session.user as { id?: string }).id!;
   const body = await req.json();
-  const { address, shippingMethodId, items, totalAmount, shippingAmount } = body;
+  const { address, shippingMethodId, items, totalAmount, shippingAmount, couponCode } = body;
+
+  // Re-validate the coupon server-side so the discount can't be tampered with.
+  const subtotal = Math.max(0, totalAmount - shippingAmount);
+  let discountAmount = 0;
+  let couponId: string | null = null;
+  if (couponCode) {
+    const result = await validateCoupon(String(couponCode), userId, subtotal);
+    if (result.valid) {
+      discountAmount = result.discount;
+      couponId = result.couponId;
+    }
+  }
+  const payable = Math.max(0, totalAmount - discountAmount);
 
   const order = await prisma.order.create({
     data: {
       userId,
       status: "PENDING",
-      totalAmount,
+      totalAmount: payable,
       shippingAmount,
+      discountAmount,
+      couponId,
       addressSnapshot: address,
       shippingMethodId,
       items: {
@@ -40,14 +56,14 @@ export async function POST(req: NextRequest) {
   });
 
   const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/payment/zibal/verify`;
-  const payResult = await requestPayment(totalAmount, order.id, callbackUrl);
+  const payResult = await requestPayment(payable, order.id, callbackUrl);
 
   if (payResult.result !== 100 || !payResult.trackId) {
     return NextResponse.json({ error: payResult.message ?? "خطا در اتصال به درگاه" }, { status: 400 });
   }
 
   await prisma.payment.create({
-    data: { orderId: order.id, trackId: String(payResult.trackId), amount: totalAmount, status: "PENDING" },
+    data: { orderId: order.id, trackId: String(payResult.trackId), amount: payable, status: "PENDING" },
   });
 
   return NextResponse.json({

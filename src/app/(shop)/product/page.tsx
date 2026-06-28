@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import ProductCard from "@/components/shop/ProductCard";
 import SortSelect from "@/components/shop/SortSelect";
+import { parseIntFa } from "@/lib/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -23,31 +24,36 @@ const PER_PAGE = 20;
 export default async function ProductsPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const { category, sort = "newest", min, max, q, page = "1" } = params;
-  const pageNum = Math.max(1, parseInt(page));
+  const pageNum = Math.max(1, parseIntFa(page) ?? 1);
   const skip = (pageNum - 1) * PER_PAGE;
 
-  const where: Record<string, unknown> = { inStock: true };
-  if (category) where.category = { slug: category };
-  if (min || max) {
+  const minVal = parseIntFa(min);
+  const maxVal = parseIntFa(max);
+
+  const where: Record<string, unknown> = {};
+  if (category) where.categories = { some: { slug: category } };
+  if (minVal != null || maxVal != null) {
     where.price = {};
-    if (min) (where.price as Record<string, number>).gte = parseInt(min);
-    if (max) (where.price as Record<string, number>).lte = parseInt(max);
+    if (minVal != null) (where.price as Record<string, number>).gte = minVal;
+    if (maxVal != null) (where.price as Record<string, number>).lte = maxVal;
   }
   if (q) where.name = { contains: q, mode: "insensitive" };
 
-  const orderBy =
+  const sortOrder =
     sort === "price-asc"
       ? { price: "asc" as const }
       : sort === "price-desc"
       ? { price: "desc" as const }
       : { createdAt: "desc" as const };
+  // Always show in-stock products first.
+  const orderBy = [{ inStock: "desc" as const }, sortOrder];
 
   const [products, total, categories] = await Promise.all([
     prisma.product.findMany({
       where,
       include: {
         images: { orderBy: { order: "asc" }, take: 1 },
-        category: { select: { name: true } },
+        categories: { select: { name: true } },
         reviews: { select: { rating: true }, where: { approved: true } },
       },
       orderBy,
@@ -73,7 +79,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">دسته‌بندی</p>
               <div className="space-y-1">
                 <Link
-                  href="/products"
+                  href="/product"
                   className={`block text-sm px-2 py-1.5 rounded-lg transition-colors ${!category ? "bg-gold-pale text-gold font-medium" : "text-gray-600 hover:bg-gray-50"}`}
                 >
                   همه
@@ -81,7 +87,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                 {categories.map((c) => (
                   <Link
                     key={c.slug}
-                    href={`/products?category=${c.slug}`}
+                    href={`/product?category=${c.slug}`}
                     className={`block text-sm px-2 py-1.5 rounded-lg transition-colors ${category === c.slug ? "bg-gold-pale text-gold font-medium" : "text-gray-600 hover:bg-gray-50"}`}
                   >
                     {c.name}
@@ -93,20 +99,22 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             {/* Price */}
             <div>
               <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">قیمت (تومان)</p>
-              <form className="flex gap-2" method="get" action="/products">
+              <form className="flex gap-2" method="get" action="/product">
                 {category && <input type="hidden" name="category" value={category} />}
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   name="min"
                   placeholder="از"
-                  defaultValue={min}
+                  defaultValue={minVal ?? ""}
                   className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-gold"
                 />
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   name="max"
                   placeholder="تا"
-                  defaultValue={max}
+                  defaultValue={maxVal ?? ""}
                   className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-gold"
                 />
                 <button type="submit" className="bg-navy text-white text-xs px-2 rounded-lg hover:bg-navy-light transition-colors">
@@ -149,7 +157,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                 return (
                   <Link
                     key={p}
-                    href={`/products?${url.toString()}`}
+                    href={`/product?${url.toString()}`}
                     className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm transition-colors ${
                       p === pageNum ? "bg-navy text-white" : "border border-gray-200 text-gray-600 hover:border-navy hover:text-navy"
                     }`}

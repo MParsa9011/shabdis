@@ -15,7 +15,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const { error } = await requireAdmin();
   if (error) return error;
-  const { name, slug, parentId } = await req.json();
-  const category = await prisma.category.create({ data: { name, slug, parentId: parentId || null } });
+  const { name, slug, parentId, image } = await req.json();
+  const category = await prisma.category.create({ data: { name, slug, parentId: parentId || null, image: image || null } });
   return NextResponse.json(category, { status: 201 });
 }

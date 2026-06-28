@@ -28,23 +28,94 @@ type ShippingMethod = {
   duration: string;
 };
 
+type SavedAddress = {
+  id: string;
+  fullName: string;
+  phone: string;
+  province: string;
+  city: string;
+  address: string;
+  postalCode: string;
+  isDefault: boolean;
+};
+
 export default function CheckoutPage() {
   const { items, total } = useCart();
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<Form>({
+  // Coupon state
+  const [couponInput, setCouponInput] = useState("");
+  const [couponApplying, setCouponApplying] = useState(false);
+  const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [couponError, setCouponError] = useState("");
+
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<Form>({
     resolver: zodResolver(schema),
   });
 
   const selectedShippingId = watch("shippingMethodId");
   const selectedShipping = shippingMethods.find((m) => m.id === selectedShippingId);
 
+  const applyAddress = (a: SavedAddress) => {
+    setSelectedAddressId(a.id);
+    setValue("fullName", a.fullName, { shouldValidate: true });
+    setValue("phone", a.phone, { shouldValidate: true });
+    setValue("province", a.province, { shouldValidate: true });
+    setValue("city", a.city, { shouldValidate: true });
+    setValue("address", a.address, { shouldValidate: true });
+    setValue("postalCode", a.postalCode, { shouldValidate: true });
+  };
+
   useEffect(() => {
     fetch("/api/shipping").then((r) => r.json()).then(setShippingMethods);
   }, []);
 
-  const grandTotal = total() + (selectedShipping?.price ?? 0);
+  // Load saved addresses and pre-fill the form with the default one.
+  useEffect(() => {
+    fetch("/api/addresses")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: SavedAddress[]) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        setSavedAddresses(data);
+        const def = data.find((a) => a.isDefault) ?? data[0];
+        applyAddress(def);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const subtotal = total();
+  const discount = coupon?.discount ?? 0;
+  const grandTotal = Math.max(0, subtotal - discount) + (selectedShipping?.price ?? 0);
+
+  const applyCoupon = async () => {
+    if (!couponInput.trim()) return;
+    setCouponApplying(true);
+    setCouponError("");
+    const res = await fetch("/api/coupon/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: couponInput.trim(), subtotal }),
+    });
+    const data = await res.json();
+    setCouponApplying(false);
+    if (data.valid) {
+      setCoupon({ code: data.code, discount: data.discount });
+      setCouponError("");
+    } else {
+      setCoupon(null);
+      setCouponError(data.message ?? "کد تخفیف معتبر نیست");
+    }
+  };
+
+  const removeCoupon = () => {
+    setCoupon(null);
+    setCouponInput("");
+    setCouponError("");
+  };
 
   const onSubmit = async (data: Form) => {
     setLoading(true);
@@ -69,8 +140,9 @@ export default function CheckoutPage() {
           productName: i.name,
           variantLabel: i.variantLabel,
         })),
-        totalAmount: grandTotal,
+        totalAmount: subtotal + (selectedShipping?.price ?? 0),
         shippingAmount: selectedShipping?.price ?? 0,
+        couponCode: coupon?.code ?? null,
       }),
     });
     const { orderId, paymentUrl } = await res.json();
@@ -82,7 +154,7 @@ export default function CheckoutPage() {
     return (
       <div className="container mx-auto px-4 max-w-lg py-20 text-center">
         <p className="text-gray-500 mb-4">سبد خرید شما خالی است</p>
-        <a href="/products" className="text-gold font-medium">بازگشت به فروشگاه</a>
+        <a href="/product" className="text-gold font-medium">بازگشت به فروشگاه</a>
       </div>
     );
   }
@@ -99,6 +171,37 @@ export default function CheckoutPage() {
               <span className="w-6 h-6 bg-navy text-white rounded-full flex items-center justify-center text-xs">۱</span>
               آدرس تحویل
             </h2>
+
+            {savedAddresses.length > 0 && (
+              <div className="mb-5">
+                <p className="text-sm text-gray-500 mb-2">آدرس‌های ذخیره‌شده</p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {savedAddresses.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => applyAddress(a)}
+                      className={`text-right p-3 rounded-xl border transition-all ${
+                        selectedAddressId === a.id
+                          ? "border-navy bg-navy/5"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-navy">{a.fullName}</span>
+                        {a.isDefault && (
+                          <span className="text-[10px] bg-gold/10 text-gold-dark px-2 py-0.5 rounded-full">پیش‌فرض</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 line-clamp-2">{a.province}، {a.city}، {a.address}</p>
+                      <p className="text-xs text-gray-400 mt-1">{a.phone} · {a.postalCode}</p>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">می‌توانید یکی را انتخاب کنید یا فیلدهای زیر را ویرایش کنید.</p>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <Input label="نام و نام خانوادگی" {...register("fullName")} error={errors.fullName?.message} />
@@ -163,11 +266,50 @@ export default function CheckoutPage() {
               </div>
             ))}
           </div>
+          {/* Coupon */}
+          <div className="border-t border-gray-100 pt-4 mb-4">
+            {coupon ? (
+              <div className="flex items-center justify-between bg-green-50 border border-green-100 rounded-xl px-3 py-2">
+                <div className="text-sm">
+                  <span className="font-mono font-bold text-green-700">{coupon.code}</span>
+                  <span className="text-green-600 text-xs mr-2">اعمال شد</span>
+                </div>
+                <button type="button" onClick={removeCoupon} className="text-red-400 hover:text-red-600 text-xs">حذف</button>
+              </div>
+            ) : (
+              <div>
+                <div className="flex gap-2">
+                  <input
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value)}
+                    placeholder="کد تخفیف"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold"
+                  />
+                  <button
+                    type="button"
+                    onClick={applyCoupon}
+                    disabled={couponApplying || !couponInput.trim()}
+                    className="bg-navy text-white text-sm px-4 rounded-lg hover:bg-navy-light transition-colors disabled:opacity-40"
+                  >
+                    {couponApplying ? "..." : "اعمال"}
+                  </button>
+                </div>
+                {couponError && <p className="text-xs text-red-500 mt-1.5">{couponError}</p>}
+              </div>
+            )}
+          </div>
+
           <div className="border-t border-gray-100 pt-3 space-y-2 text-sm mb-4">
             <div className="flex justify-between text-gray-600">
               <span>جمع سبد</span>
-              <span>{formatPrice(total())}</span>
+              <span>{formatPrice(subtotal)}</span>
             </div>
+            {discount > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>تخفیف</span>
+                <span>− {formatPrice(discount)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-gray-600">
               <span>هزینه ارسال</span>
               <span>{selectedShipping ? (selectedShipping.price === 0 ? "رایگان" : formatPrice(selectedShipping.price)) : "---"}</span>

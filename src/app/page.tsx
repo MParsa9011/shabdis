@@ -1,10 +1,15 @@
 import Header from "@/components/shop/Header";
 import Footer from "@/components/shop/Footer";
 import CartDrawer from "@/components/shop/CartDrawer";
+import ProductSlider from "@/components/shop/ProductSlider";
+import HeroSlider from "@/components/shop/HeroSlider";
+import PromoBanners from "@/components/shop/PromoBanners";
 import { auth } from "@/lib/auth";
 import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
+import { getSettings } from "@/lib/settings";
+import { getNavCategories } from "@/lib/categories";
 import ProductCard from "@/components/shop/ProductCard";
 import type { Metadata } from "next";
 
@@ -19,7 +24,7 @@ async function getFeaturedProducts() {
       where: { featured: true, inStock: true },
       include: {
         images: { orderBy: { order: "asc" }, take: 1 },
-        category: { select: { name: true } },
+        categories: { select: { name: true } },
         reviews: { select: { rating: true }, where: { approved: true } },
       },
       take: 8,
@@ -34,7 +39,7 @@ async function getNewAndDiscounted() {
         where: { inStock: true },
         include: {
           images: { orderBy: { order: "asc" }, take: 1 },
-          category: { select: { name: true } },
+          categories: { select: { name: true } },
           reviews: { select: { rating: true }, where: { approved: true } },
         },
         orderBy: { createdAt: "desc" },
@@ -44,7 +49,7 @@ async function getNewAndDiscounted() {
         where: { inStock: true, comparePrice: { not: null } },
         include: {
           images: { orderBy: { order: "asc" }, take: 1 },
-          category: { select: { name: true } },
+          categories: { select: { name: true } },
           reviews: { select: { rating: true }, where: { approved: true } },
         },
         orderBy: { createdAt: "desc" },
@@ -60,7 +65,8 @@ async function getCategories() {
     return await prisma.category.findMany({
       where: { parentId: null },
       include: { _count: { select: { products: true } } },
-      take: 6,
+      orderBy: [{ image: { sort: "asc", nulls: "last" } }, { name: "asc" }],
+      take: 5,
     });
   } catch { return []; }
 }
@@ -122,19 +128,41 @@ export default async function HomePage() {
     ? { name: session.user.name, role: (session.user as { role?: string }).role }
     : null;
 
-  const [featured, { newest, discounted }, categories, posts] = await Promise.all([
+  const [featured, { newest, discounted }, categories, posts, settings, navCategories] = await Promise.all([
     getFeaturedProducts(),
     getNewAndDiscounted(),
     getCategories(),
     getLatestPosts(),
+    getSettings(),
+    getNavCategories(),
   ]);
+
+  const heroImage = settings.heroImage?.trim();
+  const heroLink = settings.heroLink?.trim() || "/product";
 
   return (
     <>
-      <Header user={user} />
+      <Header user={user} categories={navCategories} />
       <CartDrawer />
       <main className="flex-1">
-        {/* Hero */}
+        {/* Hero image banner (editable in admin) */}
+        {heroImage ? (
+          <section className="relative">
+            <Link href={heroLink} className="block relative w-full aspect-[16/6] md:aspect-[16/5] overflow-hidden">
+              <Image
+                src={heroImage}
+                alt="بنر شبدیس"
+                fill
+                priority
+                unoptimized
+                sizes="100vw"
+                className="object-cover"
+              />
+            </Link>
+          </section>
+        ) : featured.length > 0 ? (
+          <HeroSlider products={featured} />
+        ) : (
         <section className="relative bg-gradient-to-br from-navy via-navy-light to-navy-dark text-white overflow-hidden">
           <div className="absolute inset-0 opacity-10">
             <div className="absolute top-20 right-20 w-64 h-64 rounded-full bg-gold blur-3xl" />
@@ -156,7 +184,7 @@ export default async function HomePage() {
                 مجموعه‌ای از زیورآلات سنگ و نقره با طراحی منحصربه‌فرد. هر قطعه داستانی دارد از دل طبیعت.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Link href="/products" className="bg-gold text-white px-8 py-3.5 rounded-xl font-semibold hover:bg-gold-light transition-colors shadow-lg shadow-gold/20">
+                <Link href="/product" className="bg-gold text-white px-8 py-3.5 rounded-xl font-semibold hover:bg-gold-light transition-colors shadow-lg shadow-gold/20">
                   مشاهده محصولات
                 </Link>
                 <Link href="/about" className="border border-white/30 text-white px-8 py-3.5 rounded-xl font-semibold hover:bg-white/10 transition-colors">
@@ -166,6 +194,7 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
+        )}
 
         {/* Features strip */}
         <section className="bg-cream border-b border-gray-100">
@@ -186,6 +215,15 @@ export default async function HomePage() {
           </div>
         </section>
 
+        {/* Promo banners (editable in admin) */}
+        <PromoBanners
+          promo1Image={settings.promo1Image}
+          promo1Link={settings.promo1Link}
+          promo2Image={settings.promo2Image}
+          promo2Link={settings.promo2Link}
+          promoCoupon={settings.promoCoupon}
+        />
+
         {/* Categories */}
         {categories.length > 0 && (
           <section className="container mx-auto px-4 max-w-7xl py-16">
@@ -194,43 +232,51 @@ export default async function HomePage() {
                 <h2 className="text-2xl font-bold text-navy">دسته‌بندی‌ها</h2>
                 <p className="text-gray-500 text-sm mt-1">محصولات ما را بر اساس دسته پیدا کنید</p>
               </div>
-              <Link href="/products" className="text-gold text-sm font-medium hover:text-gold-dark transition-colors">
+              <Link href="/product" className="text-gold text-sm font-medium hover:text-gold-dark transition-colors">
                 همه دسته‌ها ←
               </Link>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
               {categories.map((cat) => (
                 <Link
                   key={cat.id}
                   href={`/categories/${cat.slug}`}
-                  className="group text-center p-4 bg-white border border-gray-100 rounded-2xl hover:border-gold/40 hover:shadow-md transition-all"
+                  className="group flex flex-col items-center text-center rounded-2xl p-4 hover:bg-cream transition-colors"
                 >
-                  <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-gradient-to-br from-cream to-gold-pale flex items-center justify-center">
+                  <div className="w-24 h-24 md:w-28 md:h-28 mb-3 flex items-center justify-center rounded-full bg-gray-50 group-hover:bg-white border border-gray-100 group-hover:border-gold/30 transition-all">
                     {cat.image ? (
-                      <Image src={cat.image} alt={cat.name} width={40} height={40} className="object-contain" />
+                      <Image
+                        src={cat.image}
+                        alt={cat.name}
+                        width={80}
+                        height={80}
+                        unoptimized
+                        className="object-contain w-16 h-16 md:w-20 md:h-20 group-hover:scale-105 transition-transform"
+                      />
                     ) : (
-                      <svg className="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-10 h-10 text-gold/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                       </svg>
                     )}
                   </div>
                   <p className="text-sm font-semibold text-navy group-hover:text-gold transition-colors">{cat.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{cat._count.products} محصول</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{cat._count.products.toLocaleString("fa-IR")} محصول</p>
                 </Link>
               ))}
             </div>
           </section>
         )}
 
-        {/* Featured products */}
-        {featured.length > 0 && (
+        {/* Featured products grid — only when the hero shows a banner image
+            (otherwise featured products are already shown in the hero slider) */}
+        {!!heroImage && featured.length > 0 && (
           <section className="container mx-auto px-4 max-w-7xl py-8 pb-16">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl font-bold text-navy">محصولات ویژه</h2>
                 <p className="text-gray-500 text-sm mt-1">منتخب ما برای شما</p>
               </div>
-              <Link href="/products" className="text-gold text-sm font-medium hover:text-gold-dark transition-colors">
+              <Link href="/product" className="text-gold text-sm font-medium hover:text-gold-dark transition-colors">
                 همه محصولات ←
               </Link>
             </div>
@@ -242,104 +288,27 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* New & Discounted basin */}
+        {/* New & Discounted sliders */}
         <section className="bg-cream py-16">
-          <div className="container mx-auto px-4 max-w-7xl">
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* New arrivals */}
-              {newest.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1 h-7 bg-navy rounded-full" />
-                      <div>
-                        <h2 className="text-xl font-bold text-navy">جدیدترین‌ها</h2>
-                        <p className="text-xs text-gray-400">تازه‌واردها</p>
-                      </div>
-                    </div>
-                    <Link href="/products?sort=newest" className="text-sm text-gold hover:text-gold-dark transition-colors">
-                      همه ←
-                    </Link>
-                  </div>
-                  <div className="space-y-3">
-                    {newest.slice(0, 4).map((p) => (
-                      <Link key={p.id} href={`/products/${p.slug}`} className="flex items-center gap-4 bg-white rounded-xl p-3 border border-gray-100 hover:border-gold/30 hover:shadow-sm transition-all group">
-                        <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-cream shrink-0">
-                          {p.images[0] ? (
-                            <Image src={p.images[0].url} alt={p.name} fill className="object-cover" sizes="64px" />
-                          ) : (
-                            <div className="w-full h-full bg-gold-pale" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-gray-400 mb-0.5">{p.category.name}</p>
-                          <p className="text-sm font-semibold text-navy line-clamp-1 group-hover:text-gold transition-colors">{p.name}</p>
-                          <p className="text-sm font-bold text-gold mt-0.5">
-                            {p.price.toLocaleString("fa-IR")} تومان
-                          </p>
-                        </div>
-                        <div className="shrink-0">
-                          <span className="inline-block bg-navy/5 text-navy text-xs px-2 py-0.5 rounded-full">جدید</span>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Discounted */}
-              {discounted.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1 h-7 bg-gold rounded-full" />
-                      <div>
-                        <h2 className="text-xl font-bold text-navy">تخفیف‌دار</h2>
-                        <p className="text-xs text-gray-400">فرصت‌های ویژه</p>
-                      </div>
-                    </div>
-                    <Link href="/products" className="text-sm text-gold hover:text-gold-dark transition-colors">
-                      همه ←
-                    </Link>
-                  </div>
-                  <div className="space-y-3">
-                    {discounted.slice(0, 4).map((p) => {
-                      const disc = p.comparePrice && p.comparePrice > p.price
-                        ? Math.round(((p.comparePrice - p.price) / p.comparePrice) * 100)
-                        : null;
-                      return (
-                        <Link key={p.id} href={`/products/${p.slug}`} className="flex items-center gap-4 bg-white rounded-xl p-3 border border-gray-100 hover:border-gold/30 hover:shadow-sm transition-all group">
-                          <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-cream shrink-0">
-                            {p.images[0] ? (
-                              <Image src={p.images[0].url} alt={p.name} fill className="object-cover" sizes="64px" />
-                            ) : (
-                              <div className="w-full h-full bg-gold-pale" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-gray-400 mb-0.5">{p.category.name}</p>
-                            <p className="text-sm font-semibold text-navy line-clamp-1 group-hover:text-gold transition-colors">{p.name}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <p className="text-sm font-bold text-gold">{p.price.toLocaleString("fa-IR")} تومان</p>
-                              {p.comparePrice && (
-                                <p className="text-xs text-gray-400 line-through">{p.comparePrice.toLocaleString("fa-IR")}</p>
-                              )}
-                            </div>
-                          </div>
-                          {disc && (
-                            <div className="shrink-0">
-                              <span className="inline-block bg-red-50 text-red-500 text-xs px-2 py-0.5 rounded-full font-bold">
-                                {disc}٪
-                              </span>
-                            </div>
-                          )}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
+          <div className="container mx-auto px-4 max-w-7xl space-y-12">
+            {newest.length > 0 && (
+              <ProductSlider
+                title="جدیدترین‌ها"
+                subtitle="تازه‌واردها"
+                accentColor="navy"
+                products={newest}
+                viewAllHref="/product?sort=newest"
+              />
+            )}
+            {discounted.length > 0 && (
+              <ProductSlider
+                title="تخفیف‌دار"
+                subtitle="فرصت‌های ویژه"
+                accentColor="gold"
+                products={discounted}
+                viewAllHref="/product"
+              />
+            )}
           </div>
         </section>
 

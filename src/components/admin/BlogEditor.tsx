@@ -39,7 +39,7 @@ export default function BlogEditor({ initialData }: Props) {
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({ link: false }),
       Image,
       Link.configure({ openOnClick: false }),
       Placeholder.configure({ placeholder: "محتوای مقاله را اینجا بنویسید..." }),

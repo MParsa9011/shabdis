@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import { formatDate } from "@/lib/utils";
+import { formatDate, safeDecode } from "@/lib/utils";
 import type { Metadata } from "next";
 
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = safeDecode(rawSlug);
   const post = await prisma.blogPost.findUnique({ where: { slug }, select: { title: true, metaTitle: true, metaDescription: true, excerpt: true } });
   if (!post) return { title: "مقاله یافت نشد" };
   return {
@@ -17,8 +18,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function BlogPostPage({ params }: Props) {
-  const { slug } = await params;
-  const post = await prisma.blogPost.findUnique({ where: { slug, published: true } });
+  const { slug: rawSlug } = await params;
+  const slug = safeDecode(rawSlug);
+  const post = await prisma.blogPost.findFirst({ where: { slug, published: true } });
   if (!post) notFound();
 
   const jsonLd = {

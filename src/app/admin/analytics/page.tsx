@@ -5,12 +5,51 @@ import { formatPrice } from "@/lib/utils";
 
 export const metadata = { title: "آمار و گزارش | ادمین" };
 
+function BreakdownCard({
+  title,
+  rows,
+  color,
+}: {
+  title: string;
+  rows: { label: string; count: number }[];
+  color: string;
+}) {
+  const total = rows.reduce((s, r) => s + r.count, 0);
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl p-5">
+      <h3 className="font-medium text-navy mb-4 text-sm">{title}</h3>
+      <div className="space-y-3">
+        {rows.length === 0 && (
+          <p className="text-sm text-gray-400 text-center py-3">داده‌ای نیست</p>
+        )}
+        {rows.map((r) => {
+          const pct = total > 0 ? Math.round((r.count / total) * 100) : 0;
+          return (
+            <div key={r.label}>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-gray-700 truncate ml-2">{r.label}</span>
+                <span className="text-gray-400 shrink-0">{r.count.toLocaleString("fa-IR")} ({pct}٪)</span>
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default async function AdminAnalyticsPage() {
   const { error } = await requireAdmin();
   if (error) redirect("/auth/signin");
 
   const now = new Date();
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart.getTime() - 86400000);
+  const weekStart = new Date(todayStart.getTime() - 6 * 86400000);
 
   const [
     productStats,
@@ -20,6 +59,12 @@ export default async function AdminAnalyticsPage() {
     monthlySales,
     totalRevenue,
     stockWarning,
+    totalViews,
+    todayViews,
+    yesterdayViews,
+    weekViews,
+    dailyViews,
+    topPages,
   ] = await Promise.all([
     // Product overview
     prisma.product.aggregate({
@@ -75,6 +120,65 @@ export default async function AdminAnalyticsPage() {
       orderBy: { stock: "asc" },
       take: 10,
     }),
+    // Visit stats
+    prisma.pageView.count(),
+    prisma.pageView.count({ where: { createdAt: { gte: todayStart } } }),
+    prisma.pageView.count({ where: { createdAt: { gte: yesterdayStart, lt: todayStart } } }),
+    prisma.pageView.count({ where: { createdAt: { gte: weekStart } } }),
+    // Daily views last 7 days
+    prisma.pageView.findMany({
+      where: { createdAt: { gte: weekStart } },
+      select: { createdAt: true },
+    }),
+    // Top pages
+    prisma.pageView.groupBy({
+      by: ["path"],
+      _count: { _all: true },
+      orderBy: { _count: { path: "desc" } },
+      take: 8,
+    }),
+  ]);
+
+  // Breakdown stats for visits (device / browser / source / location)
+  const [deviceStats, browserStats, sourceStats, countryStats] = await Promise.all([
+    prisma.pageView.groupBy({
+      by: ["device"],
+      _count: { _all: true },
+      orderBy: { _count: { device: "desc" } },
+    }),
+    prisma.pageView.groupBy({
+      by: ["browser"],
+      _count: { _all: true },
+      orderBy: { _count: { browser: "desc" } },
+    }),
+    prisma.pageView.groupBy({
+      by: ["source"],
+      _count: { _all: true },
+      orderBy: { _count: { source: "desc" } },
+      take: 8,
+    }),
+    prisma.pageView.groupBy({
+      by: ["country"],
+      _count: { _all: true },
+      orderBy: { _count: { country: "desc" } },
+      take: 8,
+    }),
+  ]);
+
+  // Unique visitors (distinct visitorId) per period
+  const countUnique = async (createdAt?: { gte?: Date; lt?: Date }) =>
+    (
+      await prisma.pageView.groupBy({
+        by: ["visitorId"],
+        where: { visitorId: { not: null }, ...(createdAt ? { createdAt } : {}) },
+      })
+    ).length;
+
+  const [uniqueTotal, uniqueToday, uniqueYesterday, uniqueWeek] = await Promise.all([
+    countUnique(),
+    countUnique({ gte: todayStart }),
+    countUnique({ gte: yesterdayStart, lt: todayStart }),
+    countUnique({ gte: weekStart }),
   ]);
 
   // Process monthly sales
@@ -116,11 +220,120 @@ export default async function AdminAnalyticsPage() {
   const inStockCount = await prisma.product.count({ where: { inStock: true } });
   const outOfStockCount = await prisma.product.count({ where: { inStock: false } });
 
+  // Build daily views map for last 7 days
+  const dailyMap: Record<string, number> = {};
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(todayStart.getTime() - i * 86400000);
+    const key = `${d.getMonth() + 1}/${d.getDate()}`;
+    dailyMap[key] = 0;
+  }
+  for (const view of dailyViews) {
+    const d = new Date(view.createdAt);
+    const key = `${d.getMonth() + 1}/${d.getDate()}`;
+    if (key in dailyMap) dailyMap[key]++;
+  }
+  const dailyChartData = Object.entries(dailyMap);
+  const maxDailyViews = Math.max(...dailyChartData.map(([, v]) => v), 1);
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-navy">آمار و گزارش</h1>
         <p className="text-gray-500 mt-1">نمای کلی عملکرد فروشگاه</p>
+      </div>
+
+      {/* Visit stats */}
+      <div>
+        <h2 className="text-lg font-semibold text-navy mb-4">آمار بازدید</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="text-xs text-gray-400 mb-1">امروز</p>
+            <p className="text-2xl font-bold text-navy">{uniqueToday.toLocaleString("fa-IR")}</p>
+            <p className="text-xs text-gray-400 mt-1">بازدیدکننده یکتا · {todayViews.toLocaleString("fa-IR")} بازدید</p>
+          </div>
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="text-xs text-gray-400 mb-1">دیروز</p>
+            <p className="text-2xl font-bold text-navy">{uniqueYesterday.toLocaleString("fa-IR")}</p>
+            <p className="text-xs text-gray-400 mt-1">بازدیدکننده یکتا · {yesterdayViews.toLocaleString("fa-IR")} بازدید</p>
+          </div>
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="text-xs text-gray-400 mb-1">۷ روز اخیر</p>
+            <p className="text-2xl font-bold text-navy">{uniqueWeek.toLocaleString("fa-IR")}</p>
+            <p className="text-xs text-gray-400 mt-1">بازدیدکننده یکتا · {weekViews.toLocaleString("fa-IR")} بازدید</p>
+          </div>
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="text-xs text-gray-400 mb-1">کل</p>
+            <p className="text-2xl font-bold text-navy">{uniqueTotal.toLocaleString("fa-IR")}</p>
+            <p className="text-xs text-gray-400 mt-1">بازدیدکننده یکتا · {totalViews.toLocaleString("fa-IR")} بازدید</p>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Daily chart */}
+          <div className="bg-white border border-gray-100 rounded-xl p-6">
+            <h3 className="font-medium text-navy mb-4 text-sm">بازدید روزانه (۷ روز اخیر)</h3>
+            <div className="flex items-end gap-2 h-28">
+              {dailyChartData.map(([day, count]) => {
+                const height = maxDailyViews > 0 ? Math.max((count / maxDailyViews) * 100, count > 0 ? 4 : 0) : 0;
+                return (
+                  <div key={day} className="flex-1 flex flex-col items-center gap-1">
+                    <p className="text-[10px] text-gray-400">{count > 0 ? count : ""}</p>
+                    <div className="w-full flex items-end justify-center h-20">
+                      <div
+                        className="w-full rounded-t-md bg-gold/70 hover:bg-gold transition-colors"
+                        style={{ height: `${height}%`, minHeight: count > 0 ? "4px" : "0" }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-gray-400">{day}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Top pages */}
+          <div className="bg-white border border-gray-100 rounded-xl p-6">
+            <h3 className="font-medium text-navy mb-4 text-sm">پربازدیدترین صفحات</h3>
+            <div className="space-y-2">
+              {topPages.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-4">هنوز بازدیدی ثبت نشده</p>
+              )}
+              {topPages.map((p, i) => (
+                <div key={p.path} className="flex items-center gap-3">
+                  <span className="text-xs text-gray-300 w-4 shrink-0">{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-600 truncate font-mono">{p.path || "/"}</p>
+                  </div>
+                  <span className="text-xs font-semibold text-navy shrink-0">{p._count._all.toLocaleString("fa-IR")}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Device / Browser / Source / Location breakdowns */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+          <BreakdownCard
+            title="دستگاه"
+            rows={deviceStats.map((d) => ({ label: d.device ?? "نامشخص", count: d._count._all }))}
+            color="bg-navy/70"
+          />
+          <BreakdownCard
+            title="مرورگر"
+            rows={browserStats.map((b) => ({ label: b.browser ?? "نامشخص", count: b._count._all }))}
+            color="bg-gold/70"
+          />
+          <BreakdownCard
+            title="منبع ورود"
+            rows={sourceStats.map((s) => ({ label: s.source ?? "نامشخص", count: s._count._all }))}
+            color="bg-blue-400"
+          />
+          <BreakdownCard
+            title="کشور / موقعیت"
+            rows={countryStats.map((c) => ({ label: c.country ?? "نامشخص", count: c._count._all }))}
+            color="bg-green-400"
+          />
+        </div>
       </div>
 
       {/* Revenue summary */}

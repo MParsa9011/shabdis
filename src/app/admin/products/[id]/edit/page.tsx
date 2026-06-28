@@ -15,9 +15,10 @@ export default async function EditProductPage({ params }: Props) {
       include: {
         images: { orderBy: { order: "asc" } },
         variants: true,
+        categories: { select: { id: true } },
       },
     }),
-    prisma.category.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.category.findMany({ select: { id: true, name: true, parentId: true }, orderBy: [{ parentId: "asc" }, { name: "asc" }] }),
   ]);
 
   if (!product) notFound();
@@ -29,12 +30,13 @@ export default async function EditProductPage({ params }: Props) {
         categories={categories}
         initialData={{
           ...product,
+          categoryIds: product.categories.map((c) => c.id),
           variantAttributes: (product.variantAttributes as string[]) ?? [],
           variants: product.variants.map((v) => ({
             ...v,
             attributes: v.attributes as Record<string, string>,
           })),
-          images: product.images.map((img) => ({ id: img.id, url: img.url })),
+          images: product.images.map((img) => ({ id: img.id, url: img.url, alt: img.alt })),
         }}
       />
     </div>

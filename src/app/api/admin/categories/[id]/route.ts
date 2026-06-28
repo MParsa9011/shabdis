@@ -8,10 +8,10 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   const { error } = await requireAdmin();
   if (error) return error;
   const { id } = await params;
-  const { name, slug, parentId } = await req.json();
+  const { name, slug, parentId, image } = await req.json();
   const category = await prisma.category.update({
     where: { id },
-    data: { name, slug, parentId: parentId || null },
+    data: { name, slug, parentId: parentId || null, image: image || null },
   });
   return NextResponse.json(category);
 }

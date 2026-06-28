@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
@@ -18,8 +19,9 @@ export default function AdminCategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
-  const [form, setForm] = useState({ name: "", slug: "", parentId: "" });
+  const [form, setForm] = useState({ name: "", slug: "", parentId: "", image: "" });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   async function load() {
     const res = await fetch("/api/admin/categories");
@@ -32,14 +34,29 @@ export default function AdminCategoriesPage() {
 
   function openNew() {
     setEditing(null);
-    setForm({ name: "", slug: "", parentId: "" });
+    setForm({ name: "", slug: "", parentId: "", image: "" });
     setShowModal(true);
   }
 
   function openEdit(cat: Category) {
     setEditing(cat);
-    setForm({ name: cat.name, slug: cat.slug, parentId: cat.parentId || "" });
+    setForm({ name: cat.name, slug: cat.slug, parentId: cat.parentId || "", image: cat.image || "" });
     setShowModal(true);
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    if (res.ok) {
+      const { url } = await res.json();
+      setForm((f) => ({ ...f, image: url }));
+    }
+    setUploading(false);
+    e.target.value = "";
   }
 
   function generateSlug(name: string) {
@@ -52,7 +69,7 @@ export default function AdminCategoriesPage() {
 
   async function handleSave() {
     setSaving(true);
-    const body = { ...form, parentId: form.parentId || null };
+    const body = { ...form, parentId: form.parentId || null, image: form.image || null };
     const url = editing ? `/api/admin/categories/${editing.id}` : "/api/admin/categories";
     const method = editing ? "PUT" : "POST";
     await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -136,6 +153,23 @@ export default function AdminCategoriesPage() {
             onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
             hint="مثال: rings یا انگشتر"
           />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">عکس دسته‌بندی</label>
+            {form.image ? (
+              <div className="relative w-full aspect-square max-w-[180px] rounded-xl overflow-hidden border border-gray-200">
+                <Image src={form.image} alt="" fill unoptimized className="object-cover" />
+                <button type="button" onClick={() => setForm((f) => ({ ...f, image: "" }))} className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded-lg hover:bg-red-600">حذف</button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full aspect-square max-w-[180px] border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gold hover:bg-gold/5 transition-colors text-gray-400">
+                <svg className="w-7 h-7 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className="text-xs">{uploading ? "در حال آپلود..." : "انتخاب عکس"}</span>
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} />
+              </label>
+            )}
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">دسته‌بندی والد (اختیاری)</label>
             <select

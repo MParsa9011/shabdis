@@ -44,7 +44,7 @@ function SuccessContent() {
           <Link href="/profile/orders">
             <Button className="w-full">مشاهده سفارش‌های من</Button>
           </Link>
-          <Link href="/products">
+          <Link href="/product">
             <Button variant="outline" className="w-full">ادامه خرید</Button>
           </Link>
         </div>

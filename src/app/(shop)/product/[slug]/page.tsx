@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import Image from "next/image";
-import { formatPrice, formatDate } from "@/lib/utils";
+import { formatPrice, formatDate, faNum, stripHtml, safeDecode } from "@/lib/utils";
 import AddToCart from "@/components/shop/AddToCart";
+import ProductGallery from "@/components/shop/ProductGallery";
+import { ProductViewProvider } from "@/components/shop/ProductViewContext";
 import ReviewForm from "@/components/shop/ReviewForm";
 import StarRating from "@/components/ui/StarRating";
 import { auth } from "@/lib/auth";
@@ -12,7 +13,8 @@ import Badge from "@/components/ui/Badge";
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = safeDecode(rawSlug);
   const product = await prisma.product.findUnique({
     where: { slug },
     select: { name: true, description: true, images: { take: 1 }, metaTitle: true, metaDescription: true },
@@ -20,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!product) return { title: "محصول یافت نشد" };
   return {
     title: product.metaTitle ?? product.name,
-    description: product.metaDescription ?? product.description.slice(0, 160),
+    description: product.metaDescription ?? stripHtml(product.description).slice(0, 160),
     openGraph: {
       images: product.images[0] ? [{ url: product.images[0].url }] : [],
     },
@@ -28,14 +30,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProductPage({ params }: Props) {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = safeDecode(rawSlug);
   const session = await auth();
 
   const product = await prisma.product.findUnique({
     where: { slug },
     include: {
       images: { orderBy: { order: "asc" } },
-      category: true,
+      categories: true,
       variants: true,
       reviews: {
         where: { approved: true },
@@ -56,7 +59,7 @@ export default async function ProductPage({ params }: Props) {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.name,
-    description: product.description,
+    description: stripHtml(product.description),
     image: product.images.map((i) => i.url),
     offers: {
       "@type": "Offer",
@@ -80,44 +83,30 @@ export default async function ProductPage({ params }: Props) {
         <nav className="flex items-center gap-2 text-sm text-gray-400 mb-6">
           <a href="/" className="hover:text-navy">خانه</a>
           <span>/</span>
-          <a href="/products" className="hover:text-navy">محصولات</a>
-          <span>/</span>
-          <a href={`/categories/${product.category.slug}`} className="hover:text-navy">{product.category.name}</a>
+          <a href="/product" className="hover:text-navy">محصولات</a>
+          {product.categories[0] && (
+            <>
+              <span>/</span>
+              <a href={`/categories/${product.categories[0].slug}`} className="hover:text-navy">{product.categories[0].name}</a>
+            </>
+          )}
           <span>/</span>
           <span className="text-navy">{product.name}</span>
         </nav>
 
+        <ProductViewProvider>
         <div className="grid lg:grid-cols-2 gap-12">
           {/* Gallery */}
-          <div className="space-y-3">
-            <div className="relative aspect-square rounded-2xl overflow-hidden bg-cream border border-gray-100">
-              {product.images[0] ? (
-                <Image src={product.images[0].url} alt={product.name} fill className="object-cover" priority />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-200">
-                  <svg className="w-24 h-24" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M4 4h16v16H4V4zm2 2v12h12V6H6z" />
-                  </svg>
-                </div>
-              )}
-            </div>
-            {product.images.length > 1 && (
-              <div className="grid grid-cols-4 gap-2">
-                {product.images.slice(1).map((img) => (
-                  <div key={img.id} className="relative aspect-square rounded-xl overflow-hidden bg-cream border border-gray-100">
-                    <Image src={img.url} alt={img.alt ?? product.name} fill className="object-cover hover:opacity-80 transition-opacity" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <ProductGallery images={product.images} name={product.name} />
 
           {/* Info */}
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <a href={`/categories/${product.category.slug}`} className="text-xs text-gold hover:text-gold-dark transition-colors">
-                {product.category.name}
-              </a>
+            <div className="flex items-center flex-wrap gap-2 mb-3">
+              {product.categories.map((cat) => (
+                <a key={cat.id} href={`/categories/${cat.slug}`} className="text-xs text-gold hover:text-gold-dark transition-colors">
+                  {cat.name}
+                </a>
+              ))}
               {product.inStock ? (
                 <Badge variant="green">موجود</Badge>
               ) : (
@@ -130,19 +119,26 @@ export default async function ProductPage({ params }: Props) {
             {avgRating && (
               <div className="flex items-center gap-2 mb-4">
                 <StarRating value={Math.round(avgRating)} size="sm" />
-                <span className="text-sm text-gray-500">({product.reviews.length} دیدگاه)</span>
+                <span className="text-sm text-gray-500">({faNum(product.reviews.length)} دیدگاه)</span>
               </div>
             )}
 
             <div className="flex items-baseline gap-3 mb-6">
-              <span className="text-3xl font-bold text-navy">{formatPrice(product.price)}</span>
-              {product.comparePrice && product.comparePrice > product.price && (
+              {product.inStock ? (
                 <>
-                  <span className="text-lg text-gray-400 line-through">{formatPrice(product.comparePrice)}</span>
-                  <Badge variant="red">
-                    {Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)}٪ تخفیف
-                  </Badge>
+                  <span className="text-xl font-bold text-navy">{formatPrice(product.price)}</span>
+
+                  {product.comparePrice && product.comparePrice > product.price && (
+                    <>
+                      <span className="text-sm text-gray-400 line-through">{formatPrice(product.comparePrice)}</span>
+                      <Badge variant="red">
+                        {faNum(Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100))}٪ تخفیف
+                      </Badge>
+                    </>
+                  )}
                 </>
+              ) : (
+                <span className="text-xl font-bold text-red-500">ناموجود</span>
               )}
             </div>
 
@@ -159,16 +155,31 @@ export default async function ProductPage({ params }: Props) {
               />
             </div>
 
-            <div className="prose prose-sm text-gray-600">
+            <div>
               <h3 className="font-semibold text-navy mb-2">توضیحات محصول</h3>
-              <p className="whitespace-pre-line">{product.description}</p>
+              <div
+                className="prose prose-sm max-w-none text-gray-600"
+                dangerouslySetInnerHTML={{ __html: product.description }}
+              />
             </div>
           </div>
         </div>
+        </ProductViewProvider>
+
+        {/* Full description */}
+        {product.longDescription && stripHtml(product.longDescription) && (
+          <div className="mt-12 bg-white border border-gray-100 rounded-2xl p-6 md:p-8">
+            <h2 className="text-xl font-bold text-navy mb-4">توضیحات کامل</h2>
+            <div
+              className="prose prose-sm md:prose-base max-w-none text-gray-700"
+              dangerouslySetInnerHTML={{ __html: product.longDescription }}
+            />
+          </div>
+        )}
 
         {/* Reviews */}
         <div className="mt-16">
-          <h2 className="text-xl font-bold text-navy mb-6">دیدگاه‌های خریداران ({product.reviews.length})</h2>
+          <h2 className="text-xl font-bold text-navy mb-6">دیدگاه‌های خریداران ({faNum(product.reviews.length)})</h2>
           <div className="grid lg:grid-cols-2 gap-8">
             <div className="space-y-4">
               {product.reviews.length === 0 ? (

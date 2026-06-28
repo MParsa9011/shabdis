@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, faNum } from "@/lib/utils";
 import Badge from "@/components/ui/Badge";
 
 type Props = {
@@ -11,7 +11,7 @@ type Props = {
     price: number;
     comparePrice?: number | null;
     images: { url: string; alt?: string | null }[];
-    category: { name: string };
+    categories: { name: string }[];
     inStock: boolean;
     reviews?: { rating: number }[];
   };
@@ -30,7 +30,7 @@ export default function ProductCard({ product }: Props) {
       : null;
 
   return (
-    <Link href={`/products/${product.slug}`} className="group block">
+    <Link href={`/product/${product.slug}`} className="group block">
       <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md hover:border-gold/30 transition-all duration-200">
         {/* Image */}
         <div className="relative aspect-square bg-cream overflow-hidden">
@@ -51,7 +51,7 @@ export default function ProductCard({ product }: Props) {
           )}
           {discount && (
             <div className="absolute top-2 right-2">
-              <Badge variant="red">{discount}٪ تخفیف</Badge>
+              <Badge variant="red">{faNum(discount)}٪ تخفیف</Badge>
             </div>
           )}
           {!product.inStock && (
@@ -63,7 +63,7 @@ export default function ProductCard({ product }: Props) {
 
         {/* Info */}
         <div className="p-3">
-          <p className="text-xs text-gray-400 mb-1">{product.category.name}</p>
+          <p className="text-xs text-gray-400 mb-1">{product.categories[0]?.name ?? ""}</p>
           <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 mb-2 group-hover:text-navy transition-colors">
             {product.name}
           </h3>
@@ -78,9 +78,15 @@ export default function ProductCard({ product }: Props) {
           )}
 
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-navy">{formatPrice(product.price)}</span>
-            {product.comparePrice && product.comparePrice > product.price && (
-              <span className="text-xs text-gray-400 line-through">{formatPrice(product.comparePrice)}</span>
+            {product.inStock ? (
+              <>
+                <span className="text-sm font-bold text-navy">{formatPrice(product.price)}</span>
+                {product.comparePrice && product.comparePrice > product.price && (
+                  <span className="text-xs text-gray-400 line-through">{formatPrice(product.comparePrice)}</span>
+                )}
+              </>
+            ) : (
+              <span className="text-sm font-bold text-red-500">ناموجود</span>
             )}
           </div>
         </div>

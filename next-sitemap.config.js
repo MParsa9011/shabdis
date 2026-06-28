@@ -14,7 +14,7 @@ module.exports = {
   sitemapSize: 5000,
   additionalPaths: async (config) => [
     await config.transform(config, "/"),
-    await config.transform(config, "/products"),
+    await config.transform(config, "/product"),
     await config.transform(config, "/blog"),
     await config.transform(config, "/about"),
   ],
